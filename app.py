@@ -125,34 +125,18 @@ st.markdown(
     """
     <style>
     :root {
-        --bg: #f4f1eb;
-        --bg-accent: #e8efe9;
-        --panel: rgba(255, 252, 247, 0.88);
-        --panel-strong: rgba(255, 253, 250, 0.96);
-        --border: rgba(99, 93, 84, 0.16);
-        --text: #18212b;
-        --muted: #5f6b73;
-        --accent: #0f766e;
-        --accent-2: #d97706;
-        --hero-a: #123b3a;
-        --hero-b: #185a4f;
-        --shadow: 0 14px 30px rgba(32, 33, 36, 0.08);
-    }
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --bg: #0f172a;
-            --bg-accent: #111827;
-            --panel: rgba(17, 24, 39, 0.82);
-            --panel-strong: rgba(15, 23, 42, 0.96);
-            --border: rgba(148, 163, 184, 0.18);
-            --text: #e5e7eb;
-            --muted: #9aa5b1;
-            --accent: #2dd4bf;
-            --accent-2: #f59e0b;
-            --hero-a: #0b1220;
-            --hero-b: #134e4a;
-            --shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
-        }
+        --bg: #0f172a;
+        --bg-accent: #111827;
+        --panel: rgba(17, 24, 39, 0.82);
+        --panel-strong: rgba(15, 23, 42, 0.96);
+        --border: rgba(148, 163, 184, 0.18);
+        --text: #e5e7eb;
+        --muted: #9aa5b1;
+        --accent: #2dd4bf;
+        --accent-2: #f59e0b;
+        --hero-a: #0b1220;
+        --hero-b: #134e4a;
+        --shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
     }
     .stApp {
         background:
