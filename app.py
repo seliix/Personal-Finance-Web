@@ -21,6 +21,10 @@ def pct(value: float) -> str:
     return f"{value:.0%}"
 
 
+def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
+    return max(low, min(value, high))
+
+
 def months_to_goal(goal_amount: float, current_savings: float, monthly_savings: float) -> float | None:
     remaining = max(goal_amount - current_savings, 0)
     if remaining == 0:
@@ -94,48 +98,251 @@ def build_action_plan(
     return actions
 
 
+def financial_health_score(
+    housing_ratio: float,
+    savings_ratio: float,
+    debt_ratio: float,
+    emergency_months: float,
+    surplus: float,
+    monthly_income: float,
+) -> int:
+    if monthly_income <= 0:
+        return 0
+
+    score = 0.0
+    score += clamp(1 - abs(housing_ratio - 0.28) / 0.28) * 20
+    score += clamp(savings_ratio / 0.2) * 25
+    score += clamp(1 - debt_ratio / 0.25) * 20
+    score += clamp(emergency_months / 6) * 25
+    score += clamp((surplus / monthly_income + 0.1) / 0.2) * 10
+    return round(score)
+
+
+def score_label(score: int) -> str:
+    if score >= 80:
+        return "Strong"
+    if score >= 60:
+        return "Stable"
+    if score >= 40:
+        return "Needs Attention"
+    return "Reset Mode"
+
+
 st.markdown(
     """
     <style>
+    :root {
+        --bg-main: linear-gradient(180deg, #ebe7de 0%, #e4e7df 52%, #dde5e1 100%);
+        --bg-glow-left: rgba(15, 118, 110, 0.10);
+        --bg-glow-right: rgba(217, 119, 6, 0.10);
+        --panel: rgba(249, 247, 242, 0.82);
+        --panel-strong: rgba(250, 248, 243, 0.94);
+        --panel-soft: rgba(255, 255, 255, 0.62);
+        --border: rgba(87, 83, 78, 0.16);
+        --text-main: #1f2937;
+        --text-muted: #5b625f;
+        --accent: #0f766e;
+        --accent-strong: #115e59;
+        --hero-start: rgba(20, 83, 75, 0.96);
+        --hero-end: rgba(37, 99, 72, 0.92);
+        --shadow: 0 18px 40px rgba(28, 25, 23, 0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-main: linear-gradient(180deg, #111827 0%, #0f172a 55%, #111827 100%);
+            --bg-glow-left: rgba(45, 212, 191, 0.08);
+            --bg-glow-right: rgba(251, 191, 36, 0.07);
+            --panel: rgba(20, 27, 39, 0.82);
+            --panel-strong: rgba(17, 24, 39, 0.95);
+            --panel-soft: rgba(255, 255, 255, 0.04);
+            --border: rgba(148, 163, 184, 0.18);
+            --text-main: #e5e7eb;
+            --text-muted: #a8b1bc;
+            --accent: #2dd4bf;
+            --accent-strong: #5eead4;
+            --hero-start: rgba(15, 23, 42, 0.96);
+            --hero-end: rgba(19, 78, 74, 0.95);
+            --shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+        }
+    }
+    .block-container {
+        padding-top: 1.35rem;
+        padding-bottom: 2rem;
+        max-width: 1220px;
+    }
     .stApp {
         background:
-            radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
-            radial-gradient(circle at top right, rgba(251, 191, 36, 0.18), transparent 28%),
-            linear-gradient(180deg, #f7f4ea 0%, #f3efe3 46%, #eef4ef 100%);
-        color: #1f2937;
+            radial-gradient(circle at top left, var(--bg-glow-left), transparent 28%),
+            radial-gradient(circle at top right, var(--bg-glow-right), transparent 28%),
+            var(--bg-main);
+        color: var(--text-main);
+    }
+    div[data-testid="stVerticalBlock"] > div:has(> div.hero-shell) {
+        margin-bottom: 0.35rem;
+    }
+    div[data-testid="stVerticalBlock"] > div:has(> div.section-shell) {
+        margin-bottom: 0.6rem;
     }
     [data-testid="stSidebar"] {
-        background: rgba(255, 251, 235, 0.92);
-        border-right: 1px solid rgba(120, 113, 108, 0.16);
+        background: var(--panel-strong);
+        border-right: 1px solid var(--border);
+    }
+    [data-testid="stSidebar"] .block-container {
+        padding-top: 1rem;
+    }
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] div {
+        color: var(--text-main);
+    }
+    .hero-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+        gap: 1rem;
+        margin-bottom: 1rem;
     }
     .hero-card {
-        background: linear-gradient(135deg, rgba(17, 94, 89, 0.96), rgba(21, 128, 61, 0.92));
+        background: linear-gradient(135deg, var(--hero-start), var(--hero-end));
         color: white;
         border-radius: 28px;
-        padding: 2rem 2rem 1.6rem 2rem;
-        box-shadow: 0 24px 60px rgba(17, 94, 89, 0.18);
-        margin-bottom: 1.4rem;
+        padding: 1.65rem 1.7rem 1.4rem 1.7rem;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+        min-height: 100%;
+    }
+    .hero-side {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        padding: 1.2rem;
+        box-shadow: var(--shadow);
+    }
+    .hero-kicker {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        opacity: 0.8;
+    }
+    .hero-title {
+        font-size: 2.75rem;
+        font-weight: 800;
+        line-height: 0.98;
+        margin-top: 0.5rem;
+        max-width: 760px;
+    }
+    .hero-copy {
+        font-size: 1rem;
+        max-width: 720px;
+        margin-top: 0.8rem;
+        opacity: 0.92;
+    }
+    .hero-pills {
+        display: flex;
+        gap: 0.7rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+    .hero-pill {
+        background: rgba(255,255,255,0.12);
+        border-radius: 999px;
+        padding: 0.48rem 0.85rem;
+        font-size: 0.92rem;
+    }
+    .section-shell {
+        background: color-mix(in srgb, var(--panel) 80%, transparent);
+        border: 1px solid var(--border);
+        border-radius: 26px;
+        padding: 0.9rem 1rem 1rem 1rem;
     }
     .soft-card {
-        background: rgba(255, 252, 245, 0.9);
-        border: 1px solid rgba(120, 113, 108, 0.14);
+        background: var(--panel-strong);
+        border: 1px solid var(--border);
         border-radius: 22px;
-        padding: 1.1rem 1.2rem;
-        box-shadow: 0 14px 36px rgba(28, 25, 23, 0.05);
+        padding: 0.95rem 1rem;
+        box-shadow: var(--shadow);
         height: 100%;
     }
-    .step-card {
-        background: rgba(255, 255, 255, 0.76);
-        border-left: 4px solid #0f766e;
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.8rem;
+        margin-bottom: 1rem;
+    }
+    .mini-stat {
+        background: color-mix(in srgb, var(--accent) 10%, var(--panel-strong));
+        border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
         border-radius: 18px;
-        padding: 1rem 1rem 0.9rem 1rem;
-        margin-bottom: 0.8rem;
+        padding: 0.9rem 1rem;
+    }
+    .step-card {
+        background: var(--panel-soft);
+        border-left: 4px solid var(--accent);
+        border-radius: 18px;
+        padding: 0.85rem 0.95rem 0.8rem 0.95rem;
+        margin-bottom: 0.65rem;
+    }
+    .tip-card {
+        background: var(--panel-soft);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.65rem;
+    }
+    .lesson-card {
+        background: linear-gradient(180deg, var(--panel-strong), color-mix(in srgb, var(--panel) 86%, transparent));
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 1rem;
+        min-height: 180px;
+    }
+    .checklist {
+        display: grid;
+        gap: 0.55rem;
+    }
+    .checklist-item {
+        background: var(--panel-soft);
+        border-radius: 16px;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid var(--border);
     }
     h1, h2, h3 {
         letter-spacing: -0.03em;
+        color: var(--text-main);
     }
     p, li {
-        color: #374151;
+        color: var(--text-muted);
+    }
+    h2 {
+        margin-top: 0.1rem;
+        margin-bottom: 0.65rem;
+    }
+    [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+        margin-bottom: 0.8rem;
+    }
+    [data-baseweb="tab"] {
+        background: var(--panel-soft);
+        border-radius: 999px;
+        padding: 0.35rem 0.9rem;
+        height: auto;
+    }
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricLabel"],
+    .stMarkdown,
+    .stAlert,
+    .stDataFrame,
+    .stProgress {
+        color: var(--text-main);
+    }
+    @media (max-width: 980px) {
+        .hero-shell {
+            grid-template-columns: 1fr;
+        }
+        .metric-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .hero-title {
+            font-size: 2.25rem;
+        }
     }
     </style>
     """,
@@ -176,6 +383,14 @@ debt_ratio = debt_payments / monthly_income if monthly_income else 0
 recommended_emergency_goal = essential_expenses * emergency_goal_months
 emergency_months_covered = current_emergency_fund / essential_expenses if essential_expenses else 0
 goal_months = months_to_goal(savings_goal_amount, current_goal_progress, monthly_savings)
+health_score = financial_health_score(
+    housing_ratio,
+    savings_ratio,
+    debt_ratio,
+    emergency_months_covered,
+    surplus,
+    monthly_income,
+)
 
 budget_df = pd.DataFrame(
     {
@@ -244,41 +459,52 @@ allocation_chart.update_layout(
 
 st.markdown(
     f"""
-    <div class="hero-card">
-        <div style="font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.18em; opacity: 0.78;">ClearPath Money</div>
-        <div style="font-size: 3rem; font-weight: 800; line-height: 1.02; margin-top: 0.45rem;">A personal finance website that helps people build calmer, stronger money habits.</div>
-        <div style="font-size: 1.05rem; max-width: 760px; margin-top: 0.9rem; opacity: 0.92;">
-            See where your money is going, understand tradeoffs, and get a practical next-step plan for budgeting, debt, and savings.
+    <div class="hero-shell">
+        <div class="hero-card">
+            <div class="hero-kicker">ClearPath Money</div>
+            <div class="hero-title">Design your money around real life, not guilt.</div>
+            <div class="hero-copy">
+                This dashboard helps people improve their personal finances with a cleaner monthly plan, better savings habits, and clearer debt decisions.
+            </div>
+            <div class="hero-pills">
+                <div class="hero-pill">Monthly income: {currency(monthly_income)}</div>
+                <div class="hero-pill">Planned savings: {currency(monthly_savings)}</div>
+                <div class="hero-pill">Free cash flow: {currency(surplus)}</div>
+            </div>
         </div>
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.2rem;">
-            <div style="background: rgba(255,255,255,0.12); border-radius: 999px; padding: 0.55rem 0.9rem;">Monthly income: {currency(monthly_income)}</div>
-            <div style="background: rgba(255,255,255,0.12); border-radius: 999px; padding: 0.55rem 0.9rem;">Planned savings: {currency(monthly_savings)}</div>
-            <div style="background: rgba(255,255,255,0.12); border-radius: 999px; padding: 0.55rem 0.9rem;">Free cash flow: {currency(surplus)}</div>
+        <div class="hero-side">
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.25rem;">Financial health score</div>
+            <div style="font-size: 3rem; font-weight: 800; line-height: 1;">{health_score}</div>
+            <div style="font-weight: 700; color: var(--accent); margin-top: 0.25rem;">{score_label(health_score)}</div>
+            <div style="margin-top: 0.7rem; color: var(--text-muted);">A quick blend of savings, debt, housing pressure, emergency coverage, and monthly cash flow.</div>
+            <div style="display: grid; gap: 0.55rem; margin-top: 0.95rem;">
+                <div class="mini-stat"><strong>{pct(housing_ratio)}</strong> of income goes to housing</div>
+                <div class="mini-stat"><strong>{pct(savings_ratio)}</strong> goes to savings and investing</div>
+                <div class="mini-stat"><strong>{emergency_months_covered:.1f} months</strong> of essentials covered</div>
+            </div>
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-top_metrics = st.columns(4)
 metric_data = [
     ("Essentials", currency(essential_expenses), "Core monthly bills before lifestyle spending."),
     ("Savings Rate", pct(savings_ratio), "How much of take-home pay is going to future goals."),
     ("Debt Load", pct(debt_ratio), "Monthly income currently committed to debt payments."),
     ("Emergency Coverage", f"{emergency_months_covered:.1f} months", "How many months of essentials your current emergency fund could cover."),
 ]
-for column, (label, value, help_text) in zip(top_metrics, metric_data, strict=True):
-    with column:
-        st.markdown(
-            f"""
-            <div class="soft-card">
-                <div style="font-size: 0.9rem; color: #57534e;">{label}</div>
-                <div style="font-size: 2rem; font-weight: 800; color: #111827; margin: 0.35rem 0;">{value}</div>
-                <div style="font-size: 0.9rem; color: #57534e;">{help_text}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+metric_cards = "".join(
+    f"""
+    <div class="soft-card">
+        <div style="font-size: 0.88rem; color: var(--text-muted);">{label}</div>
+        <div style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); margin: 0.25rem 0;">{value}</div>
+        <div style="font-size: 0.88rem; color: var(--text-muted);">{help_text}</div>
+    </div>
+    """
+    for label, value, help_text in metric_data
+)
+st.markdown(f'<div class="metric-grid">{metric_cards}</div>', unsafe_allow_html=True)
 
 
 dashboard_tab, budget_tab, debt_tab, goals_tab, learn_tab = st.tabs(
@@ -286,6 +512,7 @@ dashboard_tab, budget_tab, debt_tab, goals_tab, learn_tab = st.tabs(
 )
 
 with dashboard_tab:
+    st.markdown('<div class="section-shell">', unsafe_allow_html=True)
     chart_col, guide_col = st.columns((1.15, 1))
     with chart_col:
         st.subheader("Spending Mix")
@@ -306,7 +533,7 @@ with dashboard_tab:
             st.markdown(
                 f"""
                 <div class="step-card">
-                    <div style="font-weight: 800; color: #0f172a; margin-bottom: 0.3rem;">{title}</div>
+                    <div style="font-weight: 800; color: var(--text-main); margin-bottom: 0.3rem;">{title}</div>
                     <div>{detail}</div>
                 </div>
                 """,
@@ -324,8 +551,10 @@ with dashboard_tab:
             """,
             unsafe_allow_html=True,
         )
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with budget_tab:
+    st.markdown('<div class="section-shell">', unsafe_allow_html=True)
     left, right = st.columns((1.15, 1))
     with left:
         st.subheader("Budget Breakdown")
@@ -338,11 +567,13 @@ with budget_tab:
         st.subheader("Budget Coaching")
         st.markdown(
             """
-            - Keep essentials as lean as your life allows so goals do not depend on motivation alone.
-            - Treat savings like a bill by automating it right after payday.
-            - Give lifestyle spending a number on purpose so you can enjoy it without guilt.
-            - If money feels tight, audit the largest recurring costs first before chasing tiny cuts.
+            <div class="tip-card"><strong>Protect the basics.</strong><br>Keep essentials as lean as your life allows so your goals do not depend on motivation alone.</div>
+            <div class="tip-card"><strong>Automate the future.</strong><br>Treat savings like a bill by moving money right after payday instead of waiting to see what is left.</div>
+            <div class="tip-card"><strong>Spend with intent.</strong><br>Give lifestyle spending a real number so you can enjoy it without guilt or guesswork.</div>
+            <div class="tip-card"><strong>Cut the big rocks first.</strong><br>If money feels tight, audit rent, transport, insurance, and debt before chasing tiny cuts.</div>
             """
+            ,
+            unsafe_allow_html=True,
         )
 
         if surplus > 0:
@@ -351,31 +582,49 @@ with budget_tab:
             st.warning("Your plan breaks even right now. That can work, but it leaves little room for surprises.")
         else:
             st.error(f"Your plan is short by {currency(abs(surplus))}. Reducing expenses or adjusting savings targets would make the budget workable.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with debt_tab:
-    st.subheader("Debt Payoff Focus")
+    st.markdown('<div class="section-shell">', unsafe_allow_html=True)
+    debt_left, debt_right = st.columns((1.05, 1))
     extra_payment = max(surplus, 0)
     estimated_acceleration = debt_payments + extra_payment
 
-    debt_cols = st.columns(3)
-    debt_cols[0].metric("Minimum payment", currency(debt_payments))
-    debt_cols[1].metric("Potential extra payment", currency(extra_payment))
-    debt_cols[2].metric("Possible monthly debt attack", currency(estimated_acceleration))
+    with debt_left:
+        st.subheader("Debt Payoff Focus")
+        debt_cols = st.columns(3)
+        debt_cols[0].metric("Minimum payment", currency(debt_payments))
+        debt_cols[1].metric("Potential extra payment", currency(extra_payment))
+        debt_cols[2].metric("Monthly debt attack", currency(estimated_acceleration))
 
-    st.markdown(
-        """
-        <div class="soft-card">
-            <div style="font-weight: 800; margin-bottom: 0.45rem;">Simple debt roadmap</div>
-            <div>1. Pay every minimum on time to protect your credit and avoid fees.</div>
-            <div>2. Use any extra cash on one target debt at a time.</div>
-            <div>3. Avalanche method saves the most interest by targeting the highest APR first.</div>
-            <div>4. Snowball method can build momentum faster by clearing the smallest balance first.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        st.markdown(
+            """
+            <div class="soft-card">
+                <div style="font-weight: 800; margin-bottom: 0.45rem;">Choose a payoff style</div>
+                <div style="margin-bottom: 0.55rem;"><strong>Avalanche:</strong> pay the highest APR first to reduce total interest.</div>
+                <div><strong>Snowball:</strong> pay the smallest balance first to build momentum and visible wins.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with debt_right:
+        st.subheader("Roadmap")
+        st.markdown(
+            """
+            <div class="checklist">
+                <div class="checklist-item">1. Keep every account current to avoid fees and credit damage.</div>
+                <div class="checklist-item">2. Pick one target balance and send all extra cash there.</div>
+                <div class="checklist-item">3. Roll each paid-off minimum into the next debt for faster acceleration.</div>
+                <div class="checklist-item">4. Pause aggressive extra payments briefly if your emergency fund is near zero.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with goals_tab:
+    st.markdown('<div class="section-shell">', unsafe_allow_html=True)
     left, right = st.columns((1, 1))
     with left:
         st.subheader("Emergency Fund Progress")
@@ -404,8 +653,10 @@ with goals_tab:
                 f"At {currency(monthly_savings)} per month, you could fully fund this goal in about {goal_months} months."
             )
         st.write(f"Saved so far: {currency(current_goal_progress)} of {currency(savings_goal_amount)}.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with learn_tab:
+    st.markdown('<div class="section-shell">', unsafe_allow_html=True)
     st.subheader("Money Basics That Actually Help")
     learn_cols = st.columns(3)
     lessons = [
@@ -426,7 +677,7 @@ with learn_tab:
         with column:
             st.markdown(
                 f"""
-                <div class="soft-card">
+                <div class="lesson-card">
                     <div style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.45rem;">{title}</div>
                     <div>{body}</div>
                 </div>
@@ -436,10 +687,17 @@ with learn_tab:
 
     st.markdown(
         """
-        ### Healthy money habits
-        - Review spending weekly so course corrections stay small.
-        - Increase savings when income rises instead of letting lifestyle costs absorb every raise.
-        - Avoid comparing your timeline to other people. Stability is progress.
-        - Choose systems over willpower: autopay, auto-save, reminders, and fixed transfer rules.
+        <div style="margin-top: 0.9rem;">
+            <h3 style="margin-bottom: 0.55rem;">Healthy money habits</h3>
+            <div class="checklist">
+                <div class="checklist-item">Review spending weekly so course corrections stay small.</div>
+                <div class="checklist-item">Increase savings when income rises instead of letting lifestyle costs absorb every raise.</div>
+                <div class="checklist-item">Avoid comparing your timeline to other people. Stability is progress.</div>
+                <div class="checklist-item">Choose systems over willpower: autopay, auto-save, reminders, and fixed transfer rules.</div>
+            </div>
+        </div>
         """
+        ,
+        unsafe_allow_html=True,
     )
+    st.markdown('</div>', unsafe_allow_html=True)
