@@ -288,7 +288,16 @@ pie_chart = px.pie(
     hole=0.58,
     color_discrete_sequence=["#0f766e", "#14b8a6", "#84cc16", "#eab308", "#f97316", "#ef4444", "#7c3aed", "#2563eb"],
 )
-pie_chart.update_layout(margin=dict(l=0, r=0, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)")
+pie_chart.update_traces(
+    textfont_color="#ffffff",
+    textinfo="label+percent",
+    hovertemplate="<b>%{label}</b><br>Amount: $%{value:,.0f}<br>Share: %{percent}<extra></extra>",
+)
+pie_chart.update_layout(
+    margin=dict(l=0, r=0, t=10, b=10),
+    paper_bgcolor="rgba(0,0,0,0)",
+    font=dict(color="#ffffff"),
+)
 
 allocation_chart = px.bar(
     allocation_df.melt(id_vars="Bucket", value_vars=["Current", "Guide"], var_name="Type", value_name="Amount"),
